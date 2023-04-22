@@ -3,6 +3,7 @@ import torch.nn as nn
 from network import VI_Network
 from data_preprocess import train_dataloader, val_dataloader
 
+
 def pose_loss(predicted_pose, gt_pose):
     mse_loss = nn.MSELoss()
     position_loss = mse_loss(predicted_pose[:, :3], gt_pose[:, :3])
