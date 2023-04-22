@@ -3,6 +3,7 @@ import glob
 import pandas as pd
 import numpy as np
 import cv2
+import torch.utils.data
 from torch.utils.data import Dataset, DataLoader, random_split, ConcatDataset
 
 
@@ -26,38 +27,40 @@ class EuRoCDataset(Dataset):
         img1 = np.expand_dims(img1, axis=0) / 255.0
         img2 = np.expand_dims(img2, axis=0) / 255.0
         
+        # Convert img1 and img2 to float tensors
+        img1 = torch.tensor(img1, dtype=torch.float32)
+        img2 = torch.tensor(img2, dtype=torch.float32)
+        
         # Get timestamps of images and find IMU measurements between them
         img1_timestamp = int(os.path.basename(self.image_files[idx]).split('.')[0])
         img2_timestamp = int(os.path.basename(self.image_files[idx + 1]).split('.')[0])
         
         imu_seq = self.imu_data[(self.imu_data['#timestamp [ns]'] >= img1_timestamp) & (self.imu_data['#timestamp [ns]'] <= img2_timestamp)]
         imu_seq = imu_seq.iloc[:, 1:].values
-
-        print(self.ground_truth.columns)
-
-
+        
+        # Convert imu_seq to float tensor
+        imu_seq = torch.tensor(imu_seq, dtype=torch.float32)
+    
         # Get ground truth pose for img1 and img2
         gt_pose1 = self.ground_truth[self.ground_truth['#timestamp'] == img1_timestamp]
         gt_pose2 = self.ground_truth[self.ground_truth['#timestamp'] == img2_timestamp]
-
-        if not gt_pose1.empty:
-            gt_pose1 = gt_pose1.iloc[0, 1:].values
-        else:
-            # Handle the case when gt_pose1 is empty
-            print("No matching ground truth data found for img1_timestamp:", img1_timestamp)
-
-        if not gt_pose2.empty:
-            gt_pose2 = gt_pose2.iloc[0, 1:].values
-        else:
-            # Handle the case when gt_pose2 is empty
-            print("No matching ground truth data found for img2_timestamp:", img2_timestamp)
+    
+        if gt_pose1.empty or gt_pose2.empty:
+            print("No matching ground truth data found for img1_timestamp:", img1_timestamp, "or img2_timestamp:", img2_timestamp)
+            return None
+    
+        gt_pose1 = gt_pose1.iloc[0, 1:].values
+        gt_pose2 = gt_pose2.iloc[0, 1:].values
         
         # Calculate relative pose between img1 and img2
         gt_rel_pose = np.hstack((gt_pose2[:3] - gt_pose1[:3], gt_pose2[3:] - gt_pose1[3:]))
-
+        
+        # Convert gt_rel_pose to float tensor
+        gt_rel_pose = torch.tensor(gt_rel_pose, dtype=torch.float32)
+    
         if self.transform:
             img1, img2, imu_seq, gt_rel_pose = self.transform((img1, img2, imu_seq, gt_rel_pose))
-
+    
         return img1, img2, imu_seq, gt_rel_pose
 
 
@@ -77,7 +80,11 @@ test_size = total_size - train_size - val_size
 
 train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
 
+def custom_collate(batch):
+    batch = list(filter(lambda x: x is not None, batch))
+    return torch.utils.data.dataloader.default_collate(batch)
+
 # Create data loaders
-train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
+val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
+test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)

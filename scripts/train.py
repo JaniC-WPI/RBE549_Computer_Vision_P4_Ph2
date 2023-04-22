@@ -28,13 +28,24 @@ optimizer = torch.optim.Adam(network.parameters(), lr=learning_rate)
 # Training loop
 for epoch in range(num_epochs):
     running_loss = 0.0
-    for data in train_dataloader:
-        img1, img2, imu_seq, gt_pose = data
-        img1, img2, imu_seq, gt_pose = img1.to(device), img2.to(device), imu_seq.to(device), gt_pose.to(device)
+    for batch in train_dataloader:
+        img1, img2, imu_seq, gt_rel_pose = batch
+        if img1 is None:
+            continue
+
+        # Move tensors to the device
+        img1 = img1.to(device)
+        img2 = img2.to(device)
+        imu_seq = imu_seq.to(device)
+        gt_rel_pose = gt_rel_pose.to(device)
 
         optimizer.zero_grad()
         predicted_pose = network(img1, img2, imu_seq)
-        loss = pose_loss(predicted_pose, gt_pose)
+
+        print("predicted_pose shape:", predicted_pose.shape)
+        print("gt_rel_pose shape:", gt_rel_pose.shape)
+
+        loss = pose_loss(predicted_pose, gt_rel_pose)
         loss.backward()
         optimizer.step()
 
