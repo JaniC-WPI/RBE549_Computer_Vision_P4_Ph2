@@ -28,7 +28,8 @@ optimizer = torch.optim.Adam(network.parameters(), lr=learning_rate)
 # Training loop
 for epoch in range(num_epochs):
     running_loss = 0.0
-    for img1, img2, imu_seq, gt_pose in train_dataloader:
+    for data in train_dataloader:
+        img1, img2, imu_seq, gt_pose = data
         img1, img2, imu_seq, gt_pose = img1.to(device), img2.to(device), imu_seq.to(device), gt_pose.to(device)
 
         optimizer.zero_grad()
@@ -48,7 +49,8 @@ for epoch in range(num_epochs):
         network.eval()
         with torch.no_grad():
             val_loss = 0.0
-            for img1, img2, imu_seq, gt_pose in val_dataloader:
+            for data in val_dataloader:
+                img1, img2, imu_seq, gt_pose = data
                 img1, img2, imu_seq, gt_pose = img1.to(device), img2.to(device), imu_seq.to(device), gt_pose.to(device)
 
                 predicted_pose = network(img1, img2, imu_seq)

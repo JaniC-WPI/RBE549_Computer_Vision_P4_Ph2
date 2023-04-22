@@ -30,15 +30,27 @@ class EuRoCDataset(Dataset):
         img1_timestamp = int(os.path.basename(self.image_files[idx]).split('.')[0])
         img2_timestamp = int(os.path.basename(self.image_files[idx + 1]).split('.')[0])
         
-        imu_seq = self.imu_data[(self.imu_data.timestamp >= img1_timestamp) & (self.imu_data.timestamp <= img2_timestamp)]
+        imu_seq = self.imu_data[(self.imu_data['#timestamp [ns]'] >= img1_timestamp) & (self.imu_data['#timestamp [ns]'] <= img2_timestamp)]
         imu_seq = imu_seq.iloc[:, 1:].values
 
-        # Get ground truth pose for img1 and img2
-        gt_pose1 = self.ground_truth[self.ground_truth.timestamp == img1_timestamp]
-        gt_pose2 = self.ground_truth[self.ground_truth.timestamp == img2_timestamp]
+        print(self.ground_truth.columns)
 
-        gt_pose1 = gt_pose1.iloc[0, 1:].values
-        gt_pose2 = gt_pose2.iloc[0, 1:].values
+
+        # Get ground truth pose for img1 and img2
+        gt_pose1 = self.ground_truth[self.ground_truth['#timestamp'] == img1_timestamp]
+        gt_pose2 = self.ground_truth[self.ground_truth['#timestamp'] == img2_timestamp]
+
+        if not gt_pose1.empty:
+            gt_pose1 = gt_pose1.iloc[0, 1:].values
+        else:
+            # Handle the case when gt_pose1 is empty
+            print("No matching ground truth data found for img1_timestamp:", img1_timestamp)
+
+        if not gt_pose2.empty:
+            gt_pose2 = gt_pose2.iloc[0, 1:].values
+        else:
+            # Handle the case when gt_pose2 is empty
+            print("No matching ground truth data found for img2_timestamp:", img2_timestamp)
         
         # Calculate relative pose between img1 and img2
         gt_rel_pose = np.hstack((gt_pose2[:3] - gt_pose1[:3], gt_pose2[3:] - gt_pose1[3:]))
@@ -51,8 +63,8 @@ class EuRoCDataset(Dataset):
 
 # Create a dataset instance for each sequence
 datasets = []
-for seq in ['MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult']:
-    datasets.append(EuRoCDataset(os.path.join('path/to/your/data', seq)))
+for seq in ['MH_01_easy','MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult']:
+    datasets.append(EuRoCDataset(os.path.join('/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/Data', seq)))
 
 # Concatenate all datasets
 full_dataset = ConcatDataset(datasets)
