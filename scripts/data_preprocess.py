@@ -90,8 +90,10 @@ train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_siz
 
 def custom_collate(batch):
     batch = list(filter(lambda x: x is not None, batch))
+    if not batch:
+        return None
     return torch.utils.data.dataloader.default_collate(batch)
-
+    
 # Create data loaders
 train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
 val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)

@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 from network import VI_Network
-from data_preprocess import train_dataloader, val_dataloader
+from data_preprocess import train_dataloader, val_dataloader, test_dataloader
+from plot import plot_losses, plot_pose_comparison
 
 
 def pose_loss(predicted_pose, gt_pose):
@@ -14,7 +15,7 @@ def pose_loss(predicted_pose, gt_pose):
 
 # Set your hyperparameters
 learning_rate = 1e-4
-num_epochs = 10
+num_epochs = 5
 
 # Create a network instance
 network = VI_Network()
@@ -25,6 +26,18 @@ network.to(device)
 
 # Create an optimizer
 optimizer = torch.optim.Adam(network.parameters(), lr=learning_rate)
+
+train_losses = []
+val_losses = []
+val_epochs = []
+test_losses = []
+pred_poses = []
+gt_poses = []
+train_pred_poses = []
+train_gt_poses = []
+test_pred_poses = []
+test_gt_poses = []
+
 
 # Training loop
 for epoch in range(num_epochs):
@@ -48,6 +61,8 @@ for epoch in range(num_epochs):
         predicted_pose = network(img1, img2, imu_seq)
 
         loss = pose_loss(predicted_pose, gt_rel_pose)
+        train_pred_poses.append(predicted_pose.cpu().detach().numpy())
+        train_gt_poses.append(gt_rel_pose.cpu().detach().numpy())
         loss.backward()
         optimizer.step()
 
@@ -55,6 +70,7 @@ for epoch in range(num_epochs):
 
     # Print average loss per epoch
     avg_loss = running_loss / len(train_dataloader)
+    train_losses.append(avg_loss)
     print(f"Epoch {epoch + 1}, Loss: {avg_loss:.4f}")
 
     # Evaluate on the validation set
@@ -71,5 +87,34 @@ for epoch in range(num_epochs):
 
                 val_loss += loss.item()
             avg_val_loss = val_loss / len(val_dataloader)
+            val_losses.append(avg_val_loss)
+            val_epochs.append(epoch + 1)  # Append the current epoch
             print(f"Validation Loss: {avg_val_loss:.4f}")
         network.train()
+
+# Test loop
+network.eval()
+with torch.no_grad():
+    for data in test_dataloader:
+        img1, img2, imu_seq, gt_pose = data
+        img1, img2, imu_seq, gt_pose = img1.to(device), img2.to(device), imu_seq.to(device), gt_pose.to(device)
+
+        predicted_pose = network(img1, img2, imu_seq)
+        loss = pose_loss(predicted_pose, gt_pose)
+
+        test_losses.append(loss.item())
+        # pred_poses.append(predicted_pose.detach().cpu().numpy())
+        # gt_poses.append(gt_pose.detach().cpu().numpy())
+        test_pred_poses.append(predicted_pose.cpu().detach().numpy())
+        test_gt_poses.append(gt_pose.cpu().detach().numpy())
+
+network.train()
+
+print(f"Length of val_epochs: {len(val_epochs)}")
+print(f"Length of train_losses: {len(train_losses)}")
+print(f"Length of val_losses: {len(val_losses)}")
+print(f"Length of test_losses: {len(test_losses)}")
+
+plot_losses(train_losses, val_losses, test_losses, val_epochs)
+plot_pose_comparison(train_pred_poses, train_gt_poses)
+plot_pose_comparison(test_pred_poses, test_gt_poses)
