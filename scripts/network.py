@@ -26,7 +26,7 @@ class VI_Network(nn.Module):
         )
 
         # self.fc = nn.Linear(128 * 2, 6)
-        self.fc = nn.Linear(1443968, 6)
+        self.fc = nn.Linear(1443968, 7)
 
     def forward(self, img1, img2, imu_seq):
         img_features1 = self.cnn(img1)
@@ -36,7 +36,7 @@ class VI_Network(nn.Module):
         lstm_features = lstm_out[:, -1, :]
 
         features = torch.cat((img_features1, img_features2, lstm_features), dim=-1)
-        print("features shape:", features.shape)
+        # print("features shape:", features.shape)
         output = self.fc(features)
 
         return output

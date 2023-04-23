@@ -45,30 +45,30 @@ class EuRoCDataset(Dataset):
         # Get ground truth pose for img1 and img2
         gt_pose1 = self.ground_truth[self.ground_truth['#timestamp'] == img1_timestamp]
         gt_pose2 = self.ground_truth[self.ground_truth['#timestamp'] == img2_timestamp]
-    
+
         if gt_pose1.empty or gt_pose2.empty:
-            print("No matching ground truth data found for img1_timestamp:", img1_timestamp, "or img2_timestamp:", img2_timestamp)
+            # print("No matching ground truth data found for img1_timestamp:", img1_timestamp, "or img2_timestamp:", img2_timestamp)
             return None
-    
-        gt_pose1 = gt_pose1.iloc[0, 1:].values
-        gt_pose2 = gt_pose2.iloc[0, 1:].values
-        
+
+        gt_pose1 = gt_pose1.iloc[0, 1:8].values  # Extract position and orientation only
+        gt_pose2 = gt_pose2.iloc[0, 1:8].values  # Extract position and orientation only
+
         # Calculate relative pose between img1 and img2
         gt_rel_position = gt_pose2[:3] - gt_pose1[:3]
-        
+
         # Calculate relative orientation
         quat1_inv = R.from_quat(gt_pose1[3:]).inv()
         quat_rel = quat1_inv * R.from_quat(gt_pose2[3:])
         gt_rel_orientation = quat_rel.as_quat()
 
         gt_rel_pose = np.hstack((gt_rel_position, gt_rel_orientation))
-        
+
         # Convert gt_rel_pose to float tensor
         gt_rel_pose = torch.tensor(gt_rel_pose, dtype=torch.float32)
-    
+
         if self.transform:
             img1, img2, imu_seq, gt_rel_pose = self.transform((img1, img2, imu_seq, gt_rel_pose))
-    
+
         return img1, img2, imu_seq, gt_rel_pose
 
 

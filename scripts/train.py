@@ -14,7 +14,7 @@ def pose_loss(predicted_pose, gt_pose):
 
 # Set your hyperparameters
 learning_rate = 1e-4
-num_epochs = 50
+num_epochs = 10
 
 # Create a network instance
 network = VI_Network()
@@ -28,9 +28,13 @@ optimizer = torch.optim.Adam(network.parameters(), lr=learning_rate)
 
 # Training loop
 for epoch in range(num_epochs):
+    print("Num of Epoch:", epoch)
     running_loss = 0.0
     for batch in train_dataloader:
+        if not batch: # skip empty batches
+            continue
         img1, img2, imu_seq, gt_rel_pose = batch
+
         if img1 is None:
             continue
 
@@ -42,9 +46,6 @@ for epoch in range(num_epochs):
 
         optimizer.zero_grad()
         predicted_pose = network(img1, img2, imu_seq)
-
-        print("predicted_pose shape:", predicted_pose.shape)
-        print("gt_rel_pose shape:", gt_rel_pose.shape)
 
         loss = pose_loss(predicted_pose, gt_rel_pose)
         loss.backward()
