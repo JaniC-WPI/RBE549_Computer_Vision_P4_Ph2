@@ -5,17 +5,27 @@ from data_preprocess import train_dataloader, val_dataloader, test_dataloader
 from plot import plot_losses, plot_pose_comparison
 
 
-def pose_loss(predicted_pose, gt_pose):
+def pose_loss(predicted_pose, gt_pose, alpha=0.5):
     mse_loss = nn.MSELoss()
     position_loss = mse_loss(predicted_pose[:, :3], gt_pose[:, :3])
     orientation_loss = mse_loss(predicted_pose[:, 3:], gt_pose[:, 3:])
-    
-    return position_loss + orientation_loss
+
+    cosine_similarity_loss = nn.CosineSimilarity(dim=1)
+    position_similarity = cosine_similarity_loss(predicted_pose[:, :3], gt_pose[:, :3])
+    orientation_similarity = cosine_similarity_loss(predicted_pose[:, 3:], gt_pose[:, 3:])
+
+    position_cosine_loss = 1 - position_similarity.mean()
+    orientation_cosine_loss = 1 - orientation_similarity.mean()
+
+    combined_position_loss = alpha * position_loss + (1 - alpha) * position_cosine_loss
+    combined_orientation_loss = alpha * orientation_loss + (1 - alpha) * orientation_cosine_loss
+
+    return combined_position_loss + combined_orientation_loss
 
 
 # Set your hyperparameters
 learning_rate = 1e-4
-num_epochs = 5
+num_epochs = 10
 
 # Create a network instance
 network = VI_Network()
