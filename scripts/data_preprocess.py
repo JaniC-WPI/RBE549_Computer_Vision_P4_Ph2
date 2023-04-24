@@ -101,11 +101,11 @@ def custom_collate(batch):
     vision_data, inertial_data, visual_inertial_data = zip(*batch)
     
     vision_data = torch.utils.data.dataloader.default_collate(vision_data)
-    inertial_data = torch.utils.data.dataloader.default_collate(inertial_data)
+    inertial_data = [torch.tensor(d[0]) for d in inertial_data]  # Convert tuples to tensors
+    inertial_data = torch.stack(inertial_data)  # Stack the tensors in the list
     visual_inertial_data = torch.utils.data.dataloader.default_collate(visual_inertial_data)
 
     return vision_data, inertial_data, visual_inertial_data
-
 # Create data loaders
 # train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
 # val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
