@@ -25,12 +25,12 @@ class EuRoCDataset(Dataset):
         img2 = cv2.imread(self.image_files[idx + 1], cv2.IMREAD_GRAYSCALE)
 
         # Reshape images to (C, H, W) and normalize
-        img1 = np.stack((img1,) * 3, axis=-1) / 255.0
-        img2 = np.stack((img2,) * 3, axis=-1) / 255.0
+        img1 = np.expand_dims(img1, axis=0) / 255.0
+        img2 = np.expand_dims(img2, axis=0) / 255.0
 
         # Convert img1 and img2 to float tensors
-        img1 = torch.tensor(img1.transpose(2, 0, 1), dtype=torch.float32)
-        img2 = torch.tensor(img2.transpose(2, 0, 1), dtype=torch.float32)
+        img1 = torch.tensor(img1, dtype=torch.float32)
+        img2 = torch.tensor(img2, dtype=torch.float32)
 
         # Get timestamps of images and find IMU measurements between them
         img1_timestamp = int(os.path.basename(self.image_files[idx]).split('.')[0])
@@ -69,12 +69,7 @@ class EuRoCDataset(Dataset):
         if self.transform:
             img1, img2, imu_seq, gt_rel_pose = self.transform((img1, img2, imu_seq, gt_rel_pose))
 
-        # Return separate tuples for each network
-        vision_data = (img1, img2, gt_rel_pose)
-        inertial_data = (imu_seq, gt_rel_pose)
-        visual_inertial_data = (img1, img2, imu_seq, gt_rel_pose)
-
-        return vision_data, inertial_data, visual_inertial_data
+        return img1, img2, imu_seq, gt_rel_pose
 
 
 # Create a dataset instance for each sequence
@@ -97,16 +92,9 @@ def custom_collate(batch):
     batch = list(filter(lambda x: x is not None, batch))
     if not batch:
         return None
-
-    vision_data, inertial_data, visual_inertial_data = zip(*batch)
+    return torch.utils.data.dataloader.default_collate(batch)
     
-    vision_data = torch.utils.data.dataloader.default_collate(vision_data)
-    inertial_data = torch.utils.data.dataloader.default_collate(inertial_data)
-    visual_inertial_data = torch.utils.data.dataloader.default_collate(visual_inertial_data)
-
-    return vision_data, inertial_data, visual_inertial_data
-
 # Create data loaders
-# train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
-# val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
-# test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
+train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
+val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
+test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
