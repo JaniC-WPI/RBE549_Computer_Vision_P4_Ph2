@@ -6,7 +6,7 @@ import cv2
 import torch.utils.data
 from torch.utils.data import Dataset, DataLoader, random_split, ConcatDataset
 from scipy.spatial.transform import Rotation as R
-
+import torch
 
 class EuRoCDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -93,19 +93,32 @@ test_size = total_size - train_size - val_size
 
 train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
 
-def custom_collate(batch):
+
+def custom_collate_train(batch):
     batch = list(filter(lambda x: x is not None, batch))
     if not batch:
         return None
-
     vision_data, inertial_data, visual_inertial_data = zip(*batch)
-    
+
+    vision_data = torch.utils.data.dataloader.default_collate(vision_data)
+    inertial_data = torch.utils.data.dataloader.default_collate(inertial_data)
+    visual_inertial_data = torch.utils.data.dataloader.default_collate(visual_inertial_data)
+
+    return vision_data, inertial_data, visual_inertial_data
+
+def custom_collate_test(batch):
+    batch = list(filter(lambda x: x is not None, batch))
+    if not batch:
+        return None
+    vision_data, inertial_data, visual_inertial_data = zip(*batch)
+
     vision_data = torch.utils.data.dataloader.default_collate(vision_data)
     inertial_data = [torch.tensor(d[0]) for d in inertial_data]  # Convert tuples to tensors
     inertial_data = torch.stack(inertial_data)  # Stack the tensors in the list
     visual_inertial_data = torch.utils.data.dataloader.default_collate(visual_inertial_data)
 
     return vision_data, inertial_data, visual_inertial_data
+
 # Create data loaders
 # train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
 # val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from data_preprocess import custom_collate, train_dataset
+from data_preprocess import custom_collate_train, train_dataset
 from loss_fn import TranslationRotationLoss
 from network import VisionOnlyNetwork, InertialOnlyNetwork, VisualInertialNetwork
 from torch.utils.data import Dataset, DataLoader
@@ -88,9 +88,9 @@ def train_visual_inertial_network(model, optimizer, img1, img2, imu_seq, gt_rel_
     return loss.item()
 
 # Training loop
-num_epochs = 2
+num_epochs = 100
 batch_size = 1
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate_train)
 
 for epoch in range(num_epochs):
     print(f"Epoch {epoch + 1}/{num_epochs}")

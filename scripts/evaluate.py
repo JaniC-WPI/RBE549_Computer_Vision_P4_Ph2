@@ -1,7 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from data_preprocess import test_dataset, custom_collate
+from data_preprocess import test_dataset, custom_collate_test
 from network import VisionOnlyNetwork, InertialOnlyNetwork, VisualInertialNetwork
 from loss_fn import TranslationRotationLoss
 # from train import vision_loss_fn, inertial_loss_fn, visual_inertial_loss_fn
@@ -91,7 +91,7 @@ visual_inertial_model.load_state_dict(torch.load("/home/jc-merlab/RBE549_Compute
 vision_loss_fn = TranslationRotationLoss()
 inertial_loss_fn = TranslationRotationLoss()
 visual_inertial_loss_fn = TranslationRotationLoss()
-test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False, collate_fn=custom_collate)
+test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False, collate_fn=custom_collate_test)
 # Evaluate models
 vision_loss, vision_gt_positions, vision_pred_positions = evaluate_model(vision_model, vision_loss_fn, test_dataloader, device)
 inertial_loss, inertial_gt_positions, inertial_pred_positions = evaluate_model(inertial_model, inertial_loss_fn, test_dataloader, device)
