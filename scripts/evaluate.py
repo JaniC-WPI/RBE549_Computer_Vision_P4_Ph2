@@ -1,9 +1,11 @@
 import torch
+import torch.nn as nn
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from data_preprocess import test_dataset, custom_collate_test
+from data_preprocess_new import test_dataset, custom_collate_test
+# from data_preprocess import 
 from network import VisionOnlyNetwork, InertialOnlyNetwork, VisualInertialNetwork
-from loss_fn import TranslationRotationLoss
+from loss_fn import TranslationRotationLoss, pose_loss
 # from train import vision_loss_fn, inertial_loss_fn, visual_inertial_loss_fn
 
 def evaluate_model(model, loss_fn, dataloader, device):
@@ -42,6 +44,7 @@ def evaluate_model(model, loss_fn, dataloader, device):
 
 
             loss = loss_fn(pred_rel_pose, gt_rel_pose)
+            # loss = pose_loss(pred_rel_pose, gt_rel_pose, alpha=0.5)
             total_loss += loss.item() * gt_rel_pose.size(0)
             total_samples += gt_rel_pose.size(0)
 
@@ -83,12 +86,13 @@ vision_model = VisionOnlyNetwork().to(device)
 inertial_model = InertialOnlyNetwork().to(device)
 visual_inertial_model = VisualInertialNetwork().to(device)
 
-vision_model.load_state_dict(torch.load("/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/models/vision_model/vision_model_epoch_2.pth"))
-inertial_model.load_state_dict(torch.load("/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/models/inertial_model/inertial_model_epoch_2.pth"))
-visual_inertial_model.load_state_dict(torch.load("/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/models/visual_inertial_model/visual_inertial_model_epoch_2.pth"))
+vision_model.load_state_dict(torch.load("/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/models/vision_model_v1/vision_model_epoch_53.pth"))
+inertial_model.load_state_dict(torch.load("/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/models/inertial_model_v1/inertial_model_epoch_53.pth"))
+visual_inertial_model.load_state_dict(torch.load("/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/models/visual_inertial_model_v1/visual_inertial_model_epoch_53.pth"))
 
 # Loss functions
 vision_loss_fn = TranslationRotationLoss()
+# vision_loss_fn = 
 inertial_loss_fn = TranslationRotationLoss()
 visual_inertial_loss_fn = TranslationRotationLoss()
 test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False, collate_fn=custom_collate_test)
@@ -97,7 +101,7 @@ vision_loss, vision_gt_positions, vision_pred_positions = evaluate_model(vision_
 inertial_loss, inertial_gt_positions, inertial_pred_positions = evaluate_model(inertial_model, inertial_loss_fn, test_dataloader, device)
 visual_inertial_loss, visual_inertial_gt_positions, visual_inertial_pred_positions = evaluate_model(visual_inertial_model, visual_inertial_loss_fn, test_dataloader, device)
 
-print("Vision Only Loss:", vision_loss)
+print("Vision Only Loss:", vision_loss) 
 print("Inertial Only Loss:", inertial_loss)
 print("Visual Inertial Loss:", visual_inertial_loss)
 

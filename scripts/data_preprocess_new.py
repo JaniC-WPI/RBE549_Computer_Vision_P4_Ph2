@@ -6,7 +6,7 @@ import cv2
 import torch.utils.data
 from torch.utils.data import Dataset, DataLoader, random_split, ConcatDataset
 from scipy.spatial.transform import Rotation as R
-
+import torch
 
 class EuRoCDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -23,20 +23,6 @@ class EuRoCDataset(Dataset):
     def __getitem__(self, idx):
         img1 = cv2.imread(self.image_files[idx], cv2.IMREAD_GRAYSCALE)
         img2 = cv2.imread(self.image_files[idx + 1], cv2.IMREAD_GRAYSCALE)
-
-        # Check if img1 and img2 are read correctly
-        if img1 is None or img2 is None:
-            print(f"Failed to read image(s) at index {idx}")
-            return None, None, None, None
-
-
-        # Reshape images to (C, H, W) and normalize
-        # img1 = np.expand_dims(img1, axis=0) / 255.0
-        # img2 = np.expand_dims(img2, axis=0) / 255.0
-
-        # # Convert img1 and img2 to float tensors
-        # img1 = torch.tensor(img1, dtype=torch.float32)
-        # img2 = torch.tensor(img2, dtype=torch.float32)
 
         # Reshape images to (C, H, W) and normalize
         img1 = np.stack((img1,) * 3, axis=-1) / 255.0
@@ -83,7 +69,12 @@ class EuRoCDataset(Dataset):
         if self.transform:
             img1, img2, imu_seq, gt_rel_pose = self.transform((img1, img2, imu_seq, gt_rel_pose))
 
-        return img1, img2, imu_seq, gt_rel_pose
+        # Return separate tuples for each network
+        vision_data = (img1, img2, gt_rel_pose)
+        inertial_data = (imu_seq, gt_rel_pose)
+        visual_inertial_data = (img1, img2, imu_seq, gt_rel_pose)
+
+        return vision_data, inertial_data, visual_inertial_data
 
 
 # Create a dataset instance for each sequence
@@ -102,13 +93,33 @@ test_size = total_size - train_size - val_size
 
 train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
 
-def custom_collate(batch):
-    batch = list(filter(lambda x: x is not None and x[0] is not None, batch))
+
+def custom_collate_train(batch):
+    batch = list(filter(lambda x: x is not None, batch))
     if not batch:
         return None
-    return torch.utils.data.dataloader.default_collate(batch)
-    
+    vision_data, inertial_data, visual_inertial_data = zip(*batch)
+
+    vision_data = torch.utils.data.dataloader.default_collate(vision_data)
+    inertial_data = torch.utils.data.dataloader.default_collate(inertial_data)
+    visual_inertial_data = torch.utils.data.dataloader.default_collate(visual_inertial_data)
+
+    return vision_data, inertial_data, visual_inertial_data
+
+def custom_collate_test(batch):
+    batch = list(filter(lambda x: x is not None, batch))
+    if not batch:
+        return None
+    vision_data, inertial_data, visual_inertial_data = zip(*batch)
+
+    vision_data = torch.utils.data.dataloader.default_collate(vision_data)
+    inertial_data = [torch.tensor(d[0]) for d in inertial_data]  # Convert tuples to tensors
+    inertial_data = torch.stack(inertial_data)  # Stack the tensors in the list
+    visual_inertial_data = torch.utils.data.dataloader.default_collate(visual_inertial_data)
+
+    return vision_data, inertial_data, visual_inertial_data
+
 # Create data loaders
-train_dataloader = DataLoader(train_dataset, batch_size=10, shuffle=True, collate_fn=custom_collate)
-val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
-test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
+# train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate)
+# val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
+# test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)

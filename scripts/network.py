@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
-from torchvision.models import resnet101
+from torchvision.models import resnet50
 import torch.nn.functional as F
 
 class VisionOnlyNetwork(nn.Module):
     def __init__(self):
         super(VisionOnlyNetwork, self).__init__()
-        self.resnet = resnet101(pretrained=True)
+        self.resnet = resnet50(pretrained=True)
         self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
         # Update the input size of the first linear layer to match the concatenated features
