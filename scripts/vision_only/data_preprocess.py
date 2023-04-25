@@ -23,46 +23,46 @@ class EuRoCDataset(Dataset):
     def __getitem__(self, idx):
         img1 = cv2.imread(self.image_files[idx], cv2.IMREAD_GRAYSCALE)
         img2 = cv2.imread(self.image_files[idx + 1], cv2.IMREAD_GRAYSCALE)
-    
+
         # Reshape images to (C, H, W) and normalize
         img1 = np.expand_dims(img1, axis=0) / 255.0
         img2 = np.expand_dims(img2, axis=0) / 255.0
-    
+
         # Convert img1 and img2 to float tensors
         img1 = torch.tensor(img1, dtype=torch.float32)
         img2 = torch.tensor(img2, dtype=torch.float32)
-    
+
         # Get timestamps of images and find IMU measurements between them
         img1_timestamp = int(os.path.basename(self.image_files[idx]).split('.')[0])
         img2_timestamp = int(os.path.basename(self.image_files[idx + 1]).split('.')[0])
-    
+
         # Get ground truth pose for img1 and img2
         gt_pose1 = self.ground_truth[self.ground_truth['#timestamp'] == img1_timestamp]
         gt_pose2 = self.ground_truth[self.ground_truth['#timestamp'] == img2_timestamp]
-    
+
         if gt_pose1.empty or gt_pose2.empty:
             # print("No matching ground truth data found for img1_timestamp:", img1_timestamp, "or img2_timestamp:", img2_timestamp)
             return None
-    
+
         gt_pose1 = gt_pose1.iloc[0, 1:8].values  # Extract position and orientation only
         gt_pose2 = gt_pose2.iloc[0, 1:8].values  # Extract position and orientation only
-    
+
         # Calculate relative pose between img1 and img2
         gt_rel_position = gt_pose2[:3] - gt_pose1[:3]
-    
+
         # Calculate relative orientation
         quat1_inv = R.from_quat(gt_pose1[3:]).inv()
         quat_rel = quat1_inv * R.from_quat(gt_pose2[3:])
         gt_rel_orientation = quat_rel.as_quat()
-    
+
         gt_rel_pose = np.hstack((gt_rel_position, gt_rel_orientation))
-    
+
         # Convert gt_rel_pose to float tensor
         gt_rel_pose = torch.tensor(gt_rel_pose, dtype=torch.float32)
-    
+
         if self.transform:
             img1, img2, gt_rel_pose = self.transform((img1, img2, gt_rel_pose))
-    
+
         return img1, img2, gt_rel_pose  # return only img1, img2, and gt_rel_pose
 
 
@@ -92,6 +92,6 @@ def custom_collate(batch):
     return torch.utils.data.dataloader.default_collate(batch)
     
 # Create data loaders
-train_dataloader = DataLoader(train_dataset, batch_size=10, shuffle=True, collate_fn=custom_collate)
-val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
-test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate)
+train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=custom_collate)
+val_dataloader = DataLoader(val_dataset, batch_size=1, shuffle=False, collate_fn=custom_collate)
+test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False, collate_fn=custom_collate)

@@ -1,5 +1,6 @@
 import torch.nn.functional as F
 import torch
+import torch.nn as nn
 
 def loss_function(pred, gt):
     # Position (translation) loss
@@ -19,3 +20,20 @@ def loss_function(pred, gt):
     total_loss = position_weight * position_loss + rotation_weight * rotation_loss
 
     return total_loss
+
+def pose_loss(predicted_pose, gt_pose, alpha=0.5):
+    mse_loss = nn.MSELoss()
+    position_loss = mse_loss(predicted_pose[:, :3], gt_pose[:, :3])
+    orientation_loss = mse_loss(predicted_pose[:, 3:], gt_pose[:, 3:])
+
+    cosine_similarity_loss = nn.CosineSimilarity(dim=1)
+    position_similarity = cosine_similarity_loss(predicted_pose[:, :3], gt_pose[:, :3])
+    orientation_similarity = cosine_similarity_loss(predicted_pose[:, 3:], gt_pose[:, 3:])
+
+    position_cosine_loss = 1 - position_similarity.mean()
+    orientation_cosine_loss = 1 - orientation_similarity.mean()
+
+    combined_position_loss = alpha * position_loss + (1 - alpha) * position_cosine_loss
+    combined_orientation_loss = alpha * orientation_loss + (1 - alpha) * orientation_cosine_loss
+
+    return combined_position_loss + combined_orientation_loss

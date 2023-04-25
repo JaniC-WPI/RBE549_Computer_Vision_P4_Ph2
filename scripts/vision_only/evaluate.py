@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
 import torch
+from network import VisionLSTM_Network
+from data_preprocess import test_dataloader
 
 def rmse(gt, pred):
     mse = np.mean((gt - pred) ** 2)
@@ -14,10 +16,13 @@ def evaluate(model, dataloader, device):
         pred_positions = []
 
         for batch in dataloader:
-            img_seq, gt_rel_pose = batch
-            img_seq, gt_rel_pose = img_seq.to(device), gt_rel_pose.to(device)
+            if batch is None:
+                continue
 
-            pred_rel_pose = model(img_seq)
+            img1, img2, gt_rel_pose = batch
+            img1, img2, gt_rel_pose = img1.to(device), img2.to(device), gt_rel_pose.to(device)
+
+            pred_rel_pose = model(img1, img2)
             gt_positions.append(gt_rel_pose[:, :3].cpu().numpy())
             pred_positions.append(pred_rel_pose[:, :3].cpu().numpy())
 
@@ -37,3 +42,10 @@ def evaluate(model, dataloader, device):
         plt.legend()
         plt.title('Trajectory Comparison')
         plt.show()
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model = VisionLSTM_Network()
+model.load_state_dict(torch.load("/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/models/vision_model/model_epoch_30.pth"))
+model.to(device)
+
+evaluate(model, test_dataloader, device)
