@@ -91,6 +91,9 @@ datasets = []
 for seq in ['MH_01_easy','MH_02_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult']:
     datasets.append(EuRoCDataset(os.path.join('/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/Data', seq)))
 
+# for seq in ['MH_01_easy']:
+#     datasets.append(EuRoCDataset(os.path.join('/home/jc-merlab/RBE549_Computer_Vision_P4_Ph2/Data', seq)))
+
 # Concatenate all datasets
 full_dataset = ConcatDataset(datasets)
 

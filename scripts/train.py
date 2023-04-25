@@ -86,7 +86,7 @@ def train_visual_inertial_network(model, optimizer, img1, img2, imu_seq, gt_rel_
 
 # Training loop
 num_epochs = 50
-batch_size = 10
+batch_size = 4
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate)
 
 for epoch in range(num_epochs):

@@ -28,8 +28,8 @@ def plot_pose_comparison(pred_poses_list, gt_poses_list):
         pred_positions.append(pred_pose[:3])
         gt_positions.append(gt_pose[:3])
 
-    pred_positions = np.array(pred_positions)
-    gt_positions = np.array(gt_positions)
+    # pred_positions = np.array(pred_positions)
+    # gt_positions = np.array(gt_positions)
 
     plt.scatter(gt_positions[:, 0], gt_positions[:, 1], marker='o', label='Ground Truth')
     plt.scatter(pred_positions[:, 0], pred_positions[:, 1], marker='.', label='Prediction')
