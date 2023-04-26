@@ -13,7 +13,13 @@ class EuRoCDataset(Dataset):
         self.root_dir = root_dir
         self.transform = transform
 
-        self.image_files = sorted(glob.glob(os.path.join(root_dir, 'mav0', 'cam0', 'data', '*.png')))
+        # self.image_files = sorted(glob.glob(os.path.join(root_dir, 'mav0', 'cam0', 'data', '*.png')))
+        # Read image files from both 'cam0' and 'cam1' folders
+        cam0_image_files = sorted(glob.glob(os.path.join(root_dir, 'mav0', 'cam0', 'data', '*.png')))
+        cam1_image_files = sorted(glob.glob(os.path.join(root_dir, 'mav0', 'cam1', 'data', '*.png')))
+
+        # Combine image files from both cameras
+        self.image_files = cam0_image_files + cam1_image_files
         self.imu_data = pd.read_csv(os.path.join(root_dir, 'mav0', 'imu0', 'data.csv'))
         self.ground_truth = pd.read_csv(os.path.join(root_dir, 'mav0', 'state_groundtruth_estimate0', 'data.csv'))
 
@@ -31,20 +37,20 @@ class EuRoCDataset(Dataset):
 
 
         # Reshape images to (C, H, W) and normalize
-        # img1 = np.expand_dims(img1, axis=0) / 255.0
-        # img2 = np.expand_dims(img2, axis=0) / 255.0
-
-        # # Convert img1 and img2 to float tensors
-        # img1 = torch.tensor(img1, dtype=torch.float32)
-        # img2 = torch.tensor(img2, dtype=torch.float32)
-
-        # Reshape images to (C, H, W) and normalize
-        img1 = np.stack((img1,) * 3, axis=-1) / 255.0
-        img2 = np.stack((img2,) * 3, axis=-1) / 255.0
+        img1 = np.expand_dims(img1, axis=0) / 255.0
+        img2 = np.expand_dims(img2, axis=0) / 255.0
 
         # Convert img1 and img2 to float tensors
-        img1 = torch.tensor(img1.transpose(2, 0, 1), dtype=torch.float32)
-        img2 = torch.tensor(img2.transpose(2, 0, 1), dtype=torch.float32)
+        img1 = torch.tensor(img1, dtype=torch.float32)
+        img2 = torch.tensor(img2, dtype=torch.float32)
+
+        # Reshape images to (C, H, W) and normalize
+        # img1 = np.stack((img1,) * 3, axis=-1) / 255.0
+        # img2 = np.stack((img2,) * 3, axis=-1) / 255.0
+
+        # # Convert img1 and img2 to float tensors
+        # img1 = torch.tensor(img1.transpose(2, 0, 1), dtype=torch.float32)
+        # img2 = torch.tensor(img2.transpose(2, 0, 1), dtype=torch.float32)
 
         # Get timestamps of images and find IMU measurements between them
         img1_timestamp = int(os.path.basename(self.image_files[idx]).split('.')[0])

@@ -3,36 +3,78 @@ import torch.nn as nn
 from torchvision.models import resnet50
 import torch.nn.functional as F
 
+# class VisionOnlyNetwork(nn.Module):
+#     def __init__(self):
+#         super(VisionOnlyNetwork, self).__init__()
+#         self.resnet = resnet50(pretrained=True)
+#         self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
+
+#         # Update the input size of the first linear layer to match the concatenated features
+#         self.fc = nn.Sequential(
+#             nn.Linear(4096, 1024),
+#             nn.ReLU(),
+#             nn.Linear(1024, 512),
+#             nn.ReLU(),
+#             nn.Linear(512, 7)
+#         )
+
+#     def forward(self, img1, img2):
+#         img1_features = self.resnet(img1)
+#         img2_features = self.resnet(img2)
+#         img1_features = img1_features.view(img1_features.size(0), -1)
+#         img2_features = img2_features.view(img2_features.size(0), -1)
+#         concatenated_features = torch.cat((img1_features, img2_features), dim=1)
+#         relative_pose = self.fc(concatenated_features)
+
+#         # Convert the first 3 elements of the output to a quaternion
+#         rotation = relative_pose[:, :3]
+#         rotation_quaternion = F.normalize(rotation, dim=1)
+#         translation = relative_pose[:, 3:]
+#         relative_pose_quat = torch.cat((rotation_quaternion, translation), dim=1)
+
+#         return relative_pose_quat
+
 class VisionOnlyNetwork(nn.Module):
     def __init__(self):
         super(VisionOnlyNetwork, self).__init__()
-        self.resnet = resnet50(pretrained=True)
-        self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
-        # Update the input size of the first linear layer to match the concatenated features
-        self.fc = nn.Sequential(
-            nn.Linear(4096, 1024),
+        self.cnn = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Linear(1024, 512),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Linear(512, 7)
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.AdaptiveAvgPool2d(output_size=(6, 8)),
+            nn.Flatten()
         )
 
+        cnn_output_size = 128 * 6 * 8  # Calculate the output size of the last CNN layer (C * H * W)
+        self.lstm = nn.LSTM(
+            input_size=cnn_output_size,
+            hidden_size=128,
+            num_layers=1,
+            batch_first=True
+        )
+
+        self.fc = nn.Linear(128, 7)
+
     def forward(self, img1, img2):
-        img1_features = self.resnet(img1)
-        img2_features = self.resnet(img2)
-        img1_features = img1_features.view(img1_features.size(0), -1)
-        img2_features = img2_features.view(img2_features.size(0), -1)
-        concatenated_features = torch.cat((img1_features, img2_features), dim=1)
-        relative_pose = self.fc(concatenated_features)
+        cnn_img1 = self.cnn(img1)
+        cnn_img2 = self.cnn(img2)
 
-        # Convert the first 3 elements of the output to a quaternion
-        rotation = relative_pose[:, :3]
-        rotation_quaternion = F.normalize(rotation, dim=1)
-        translation = relative_pose[:, 3:]
-        relative_pose_quat = torch.cat((rotation_quaternion, translation), dim=1)
+        cnn_features = torch.cat((cnn_img1, cnn_img2), dim=1).view(img1.shape[0], 2, -1)
+        # cnn_features = cnn_features.unsqueeze(1)  # Add a sequence length dimension
 
-        return relative_pose_quat
+        lstm_out, _ = self.lstm(cnn_features)
+        lstm_features = lstm_out[:, -1, :]
+
+        output = self.fc(lstm_features)
+
+        return output
 
 class InertialOnlyNetwork(nn.Module):
     def __init__(self):
